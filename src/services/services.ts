@@ -136,7 +136,7 @@ namespace ts {
         }
 
         private createChildren(sourceFile?: SourceFileLike) {
-            if (isJSDocTag(this)) {
+            if (isJSDocNode(this)) {
                 /** Don't add trivia for "tokens" since this is in a comment. */
                 const children: Node[] = [];
                 this.forEachChild(child => { children.push(child); });

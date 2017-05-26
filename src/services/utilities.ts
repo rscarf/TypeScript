@@ -636,7 +636,7 @@ namespace ts {
 
             // find the child that contains 'position'
             for (const child of current.getChildren()) {
-                if (isJSDocNode(child) && !includeJsDocComment) {
+                if (!includeJsDocComment && isJSDocNode(child)) {
                     continue;
                 }
 
@@ -646,7 +646,7 @@ namespace ts {
                 }
 
                 const end = child.getEnd();
-                if (position < end || (position === end && child.kind === SyntaxKind.EndOfFileToken)) {
+                if (position < end || (position === end && (child.kind === SyntaxKind.EndOfFileToken || child.kind === SyntaxKind.JSDocParameterTag))) {
                     current = child;
                     continue outer;
                 }
@@ -899,42 +899,6 @@ namespace ts {
             const text = sourceFile.text;
             return text.length >= c.pos + 3 && text[c.pos] === "/" && text[c.pos + 1] === "*" && text[c.pos + 2] === "*";
         }
-    }
-
-    /**
-     * Get the corresponding JSDocTag node if the position is in a jsDoc comment
-     */
-    export function getJsDocTagAtPosition(sourceFile: SourceFile, position: number): JSDocTag {
-        let node = ts.getTokenAtPosition(sourceFile, position, /*includeJsDocComment*/ false);
-        if (isToken(node)) {
-            switch (node.kind) {
-                case SyntaxKind.VarKeyword:
-                case SyntaxKind.LetKeyword:
-                case SyntaxKind.ConstKeyword:
-                    // if the current token is var, let or const, skip the VariableDeclarationList
-                    node = node.parent === undefined ? undefined : node.parent.parent;
-                    break;
-                default:
-                    node = node.parent;
-                    break;
-            }
-        }
-
-        if (node) {
-            if (node.jsDoc) {
-                for (const jsDoc of node.jsDoc) {
-                    if (jsDoc.tags) {
-                        for (const tag of jsDoc.tags) {
-                            if (tag.pos <= position && position <= tag.end) {
-                                return tag;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return undefined;
     }
 
     function nodeHasTokens(n: Node): boolean {

@@ -292,6 +292,10 @@ namespace ts {
         return node.kind === SyntaxKind.JSDocComment;
     }
 
+    export function isJSDocParameterTag(node: Node): node is JSDocParameterTag {
+        return node.kind === SyntaxKind.JSDocParameterTag;
+    }
+
     export function isJSDocTypedefTag(node: Node): node is JSDocTypedefTag {
         return node.kind === SyntaxKind.JSDocTypedefTag;
     }
