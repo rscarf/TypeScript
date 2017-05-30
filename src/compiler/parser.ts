@@ -6635,8 +6635,9 @@ namespace ts {
 
                 function parseBracketNameInPropertyAndParamTag(): { name: Identifier, isBracketed: boolean } {
                     // Looking for something like '[foo]' or 'foo'
-                    if (parseOptionalToken(SyntaxKind.OpenBracketToken)) {
-                        const name = parseJSDocIdentifierName();
+                    const isBracketed = parseOptional(SyntaxKind.OpenBracketToken);
+                    const name = parseJSDocIdentifierName(/*always*/ true);
+                    if (isBracketed) {
                         skipWhitespace();
 
                         // May have an optional default, e.g. '[foo = 42]'
@@ -6645,12 +6646,9 @@ namespace ts {
                         }
 
                         parseExpected(SyntaxKind.CloseBracketToken);
-                        return { name, isBracketed: true };
                     }
-                    else { //if (tokenIsIdentifierOrKeyword(token())) {
-                        const name = parseJSDocIdentifierName();
-                        return { name, isBracketed: false };
-                    }
+
+                    return { name, isBracketed };
                 }
 
                 function parseParamTag(atToken: AtToken, tagName: Identifier): JSDocParameterTag {
@@ -6658,11 +6656,6 @@ namespace ts {
                     skipWhitespace();
 
                     const { name, isBracketed } = parseBracketNameInPropertyAndParamTag();
-
-                    //if (!name) {
-                    //    parseErrorAtPosition(scanner.getStartPos(), 0, Diagnostics.Identifier_expected);
-                    //    //return undefined;
-                    //}
 
                     let preName: Identifier, postName: Identifier;
                     if (typeExpression) {
@@ -6684,7 +6677,8 @@ namespace ts {
                     result.postParameterName = postName;
                     result.parameterName = postName || preName;
                     result.isBracketed = isBracketed;
-                    //include trailing whitespace
+                    // Include trailing whitespace inside the range of the '@param' tag.
+                    // This way we can provide completions after `@param `.
                     let end = scanner.getStartPos();
                     while (ts.isWhiteSpaceSingleLine(scanner.getText().charCodeAt(end))) end++;
                     return finishNode(result, end);
@@ -6928,14 +6922,18 @@ namespace ts {
                     return currentToken = scanner.scanJSDocToken();
                 }
 
-                function parseJSDocIdentifierName(): Identifier {
-                    return createJSDocIdentifier(tokenIsIdentifierOrKeyword(token()));
+                function parseJSDocIdentifierName(createIfMissing = false): Identifier {
+                    return createJSDocIdentifier(tokenIsIdentifierOrKeyword(token()), createIfMissing);
                 }
 
-                function createJSDocIdentifier(isIdentifier: boolean): Identifier | undefined {
+                function createJSDocIdentifier(isIdentifier: boolean, createIfMissing: boolean): Identifier {
                     if (!isIdentifier) {
-                        parseErrorAtCurrentToken(Diagnostics.Identifier_expected);
-                        return undefined;
+                        if (createIfMissing) {
+                            return <Identifier>createMissingNode(SyntaxKind.Identifier, false, Diagnostics.Identifier_expected);
+                        } else {
+                            parseErrorAtCurrentToken(Diagnostics.Identifier_expected);
+                            return undefined;
+                        }
                     }
 
                     const pos = scanner.getTokenPos();

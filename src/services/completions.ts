@@ -18,21 +18,17 @@ namespace ts.Completions {
             return undefined;
         }
 
-        const { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, requestJsDocTagName, requestJsDocTag, requestJsDocParameterName, hasFilteredClassMemberKeywords } = completionData;
+        const { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, request, hasFilteredClassMemberKeywords } = completionData;
 
-        if (requestJsDocTagName) {
-            // If the current position is a jsDoc tag name, only tag names should be provided for completion
-            return { isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, entries: JsDoc.getJSDocTagNameCompletions() };
-        }
-
-        if (requestJsDocTag) {
-            // If the current position is a jsDoc tag, only tags should be provided for completion
-            return { isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, entries: JsDoc.getJSDocTagCompletions() };
-        }
-
-        if (requestJsDocParameterName) {
-            debugger;
-            return { isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, entries: JsDoc.getJSDocParameterNameCompletions(requestJsDocParameterName) };
+        if (request) {
+            const entries = request.kind === "JsDocTagName"
+                // If the current position is a jsDoc tag name, only tag names should be provided for completion
+                ? JsDoc.getJSDocTagNameCompletions()
+                : request.kind === "JsDocTag"
+                // If the current position is a jsDoc tag, only tags should be provided for completion
+                ? JsDoc.getJSDocTagCompletions()
+                : JsDoc.getJSDocParameterNameCompletions(request.tag);
+            return { isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false,  entries };
         }
 
         const entries: CompletionEntry[] = [];
@@ -69,7 +65,7 @@ namespace ts.Completions {
             addRange(entries, classMemberKeywordCompletions);
         }
         // Add keywords if this is not a member completion list
-        else if (!isMemberCompletion && !requestJsDocTag && !requestJsDocTagName) {
+        else if (!isMemberCompletion) {
             addRange(entries, keywordCompletions);
         }
 
@@ -357,21 +353,20 @@ namespace ts.Completions {
         isNewIdentifierLocation: boolean;
         location: Node;
         isRightOfDot: boolean;
-        //TODO: 'request' union type
-        requestJsDocTagName: boolean;
-        requestJsDocTag: boolean;
-        requestJsDocParameterName: JSDocParameterTag;
+        request?: Request;
         hasFilteredClassMemberKeywords: boolean;
     }
+    type Request = { kind: "JsDocTagName" } | { kind: "JsDocTag" } | { kind: "JsDocParameterName", tag: JSDocParameterTag };
 
     function getCompletionData(typeChecker: TypeChecker, log: (message: string) => void, sourceFile: SourceFile, position: number): CompletionData {
         const isJavaScriptFile = isSourceFileJavaScript(sourceFile);
 
-        // JsDoc tag-name is just the name of the JSDoc tagname (exclude "@")
-        let requestJsDocTagName = false;
-        // JsDoc tag includes both "@" and tag-name
-        let requestJsDocTag = false;
-        let requestJsDocParameterName: JSDocParameterTag = undefined;
+        //JsDoc tag-name is just the name of the JSDoc tagname (exclude "@")
+        let request: Request | undefined;
+        //let requestJsDocTagName = false;
+        //JsDoc tag includes both "@" and tag-name
+        //let requestJsDocTag = false;
+        //let requestJsDocParameterName: JSDocParameterTag = undefined;
 
         let start = timestamp();
         const currentToken = getTokenAtPosition(sourceFile, position, /*includeJsDocComment*/ false); // TODO: GH#15853
@@ -387,7 +382,7 @@ namespace ts.Completions {
                 if (sourceFile.text.charCodeAt(position - 1) === CharacterCodes.at) {
                     // The current position is next to the '@' sign, when no tag name being provided yet.
                     // Provide a full list of tag names
-                    requestJsDocTagName = true;
+                    request = { kind: "JsDocTagName" };
                 }
                 else {
                     // When completion is requested without "@", we will have check to make sure that
@@ -407,7 +402,9 @@ namespace ts.Completions {
                     //    *         |c|
                     //    */
                     const lineStart = getLineStartPositionForPosition(position, sourceFile);
-                    requestJsDocTag = !(sourceFile.text.substring(lineStart, position).match(/[^\*|\s|(/\*\*)]/));
+                    if (!(sourceFile.text.substring(lineStart, position).match(/[^\*|\s|(/\*\*)]/))) {
+                        request = { kind: "JsDocTag" };
+                    }
                 }
             }
 
@@ -418,7 +415,7 @@ namespace ts.Completions {
             const tag = getJsDocTagAtPosition(sourceFile, position);
             if (tag) {
                 if (tag.tagName.pos <= position && position <= tag.tagName.end) {
-                    requestJsDocTagName = true;
+                    request = { kind: "JsDocTagName" };
                 }
 
                 switch (tag.kind) {
@@ -428,15 +425,15 @@ namespace ts.Completions {
                         const tagWithExpression = <JSDocTypeTag | JSDocParameterTag | JSDocReturnTag>tag;
                         if (tagWithExpression.typeExpression && tagWithExpression.typeExpression.pos < position && position < tagWithExpression.typeExpression.end) {
                             insideJsDocTagExpression = true;
-                        } else if (isJSDocParameterTag(tag) && (!tag.parameterName || tag.parameterName.pos <= position && position <= tag.parameterName.end)) {
-                            requestJsDocParameterName = tag;
+                        } else if (isJSDocParameterTag(tag) && (nodeIsMissing(tag.parameterName) || tag.parameterName.pos <= position && position <= tag.parameterName.end)) { //TODO: need nodeIsMissing?
+                            request = { kind: "JsDocParameterName", tag };
                         }
                         break;
                 }
             }
 
-            if (requestJsDocTagName || requestJsDocTag || requestJsDocParameterName) {
-                return { symbols: undefined, isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, location: undefined, isRightOfDot: false, requestJsDocTagName, requestJsDocTag, requestJsDocParameterName, hasFilteredClassMemberKeywords: false };
+            if (request) {
+                return { symbols: undefined, isGlobalCompletion: false, isMemberCompletion: false, isNewIdentifierLocation: false, location: undefined, isRightOfDot: false, request, hasFilteredClassMemberKeywords: false };
             }
 
             if (!insideJsDocTagExpression) {
@@ -573,7 +570,7 @@ namespace ts.Completions {
 
         log("getCompletionData: Semantic work: " + (timestamp() - semanticStart));
 
-        return { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, isRightOfDot: (isRightOfDot || isRightOfOpenTag), requestJsDocTagName, requestJsDocTag, requestJsDocParameterName, hasFilteredClassMemberKeywords };
+        return { symbols, isGlobalCompletion, isMemberCompletion, isNewIdentifierLocation, location, isRightOfDot: (isRightOfDot || isRightOfOpenTag), request, hasFilteredClassMemberKeywords };
 
         function getTypeScriptMemberSymbols(): void {
             // Right of dot member completion list

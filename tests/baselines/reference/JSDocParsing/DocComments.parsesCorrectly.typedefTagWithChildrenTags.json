@@ -97,7 +97,8 @@
                                 "pos": 58,
                                 "end": 64
                             }
-                        }
+                        },
+                        "isBracketed": false
                     },
                     {
                         "kind": "JSDocPropertyTag",
@@ -129,7 +130,8 @@
                                 "pos": 85,
                                 "end": 91
                             }
-                        }
+                        },
+                        "isBracketed": false
                     }
                 ]
             },

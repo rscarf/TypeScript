@@ -2164,9 +2164,8 @@ namespace ts {
         postParameterName?: Identifier;
         /**
          * the parameter name, regardless of the location it was provided.
-         * Undefined in case of a parse error.
          */
-        parameterName?: Identifier;
+        parameterName: Identifier;
         isBracketed: boolean;
     }
 
