@@ -6636,7 +6636,7 @@ namespace ts {
                 function parseBracketNameInPropertyAndParamTag(): { name: Identifier, isBracketed: boolean } {
                     // Looking for something like '[foo]' or 'foo'
                     const isBracketed = parseOptional(SyntaxKind.OpenBracketToken);
-                    const name = parseJSDocIdentifierName(/*always*/ true);
+                    const name = parseJSDocIdentifierName(/*createIfMissing*/ true);
                     if (isBracketed) {
                         skipWhitespace();
 

@@ -2169,7 +2169,7 @@ namespace FourSlash {
             Harness.IO.log(this.spanInfoToString(this.getNameOrDottedNameSpan(pos), "**"));
         }
 
-        private verifyClassifications(expected: { classificationType: string; text: string; textSpan?: TextSpan }[], actual: ts.ClassifiedSpan[]) {
+        private verifyClassifications(expected: { classificationType: string; text: string; textSpan?: TextSpan }[], actual: ts.ClassifiedSpan[], sourceFileText: string) {
             if (actual.length !== expected.length) {
                 this.raiseError("verifyClassifications failed - expected total classifications to be " + expected.length +
                     ", but was " + actual.length +
@@ -2209,9 +2209,11 @@ namespace FourSlash {
             });
 
             function jsonMismatchString() {
+                const showActual = actual.map(({ classificationType, textSpan }) =>
+                    ({ classificationType, text: sourceFileText.slice(textSpan.start, textSpan.start + textSpan.length) }));
                 return Harness.IO.newLine() +
                     "expected: '" + Harness.IO.newLine() + stringify(expected) + "'" + Harness.IO.newLine() +
-                    "actual:   '" + Harness.IO.newLine() + stringify(actual) + "'";
+                    "actual:   '" + Harness.IO.newLine() + stringify(showActual) + "'";
             }
         }
 
@@ -2234,14 +2236,14 @@ namespace FourSlash {
             const actual = this.languageService.getSemanticClassifications(this.activeFile.fileName,
                 ts.createTextSpan(0, this.activeFile.content.length));
 
-            this.verifyClassifications(expected, actual);
+            this.verifyClassifications(expected, actual, this.activeFile.content);
         }
 
         public verifySyntacticClassifications(expected: { classificationType: string; text: string }[]) {
             const actual = this.languageService.getSyntacticClassifications(this.activeFile.fileName,
                 ts.createTextSpan(0, this.activeFile.content.length));
 
-            this.verifyClassifications(expected, actual);
+            this.verifyClassifications(expected, actual, this.activeFile.content);
         }
 
         public verifyOutliningSpans(spans: TextSpan[]) {
