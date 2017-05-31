@@ -1226,7 +1226,7 @@ namespace ts {
                     const oldSourceFile = program && program.getSourceFileByPath(path);
                     if (oldSourceFile) {
                         if (oldSourceFile.isRedirect) {
-                            return oldSourceFile; //I guess???
+                            return oldSourceFile;
                         }
 
                         // We already had a source file for this file name.  Go to the registry to
