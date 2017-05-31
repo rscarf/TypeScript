@@ -1523,11 +1523,6 @@ namespace ts {
             }
         }
 
-        //mv
-        function packageIdToKey(packageId: PackageId): string {
-            return `${packageId.name}@${packageId.version}`;
-        }
-
         function createDuplicateSourceFile(sf: SourceFile, fileName: string, path: Path): SourceFile {
             const c: SourceFile = Object.create(sf);
             c.fileName = fileName;
@@ -1538,26 +1533,9 @@ namespace ts {
 
         // Get source file from normalized fileName
         function findSourceFile(fileName: string, path: Path, isDefaultLib: boolean, packageId: PackageId | undefined, refFile?: SourceFile, refPos?: number, refEnd?: number): SourceFile | undefined {
-            let file: SourceFile | undefined;
-            let foo = false;
-            const packageKey = packageId && packageIdToKey(packageId);
             if (filesByName.contains(path)) {
-                foo = true;
-            } else {
-                file = packageKey && packageIdToSourceFile.get(packageKey);
-                foo = !!file;
-            }
-            if (foo) {
-                if (file) {
-                    //packageId case
-                    file = createDuplicateSourceFile(file, fileName, path);
-                    filesByName.set(path, file);
-                    files.push(file);
-                } else {
-                    //fileByName cached result.
-                    file = filesByName.get(path);
-                    if (!file) return undefined;
-                }
+                const file = filesByName.get(path);
+                if (!file) return undefined;
 
                 // try to check if we've already seen this file but with a different casing in path
                 // NOTE: this only makes sense for case-insensitive file systems
@@ -1588,14 +1566,17 @@ namespace ts {
                 return file;
             }
 
-            //Might be a different location of the same package.
-            //if (file) {
-                //const file = packageIdToSourceFile.
-                //filesByName.set(path, file);
-            //}
+            const packageKey = packageId && `${packageId.name}@${packageId.version}`;
+            const fileFromPackageId = packageKey && packageIdToSourceFile.get(packageKey);
+            if (fileFromPackageId) {
+                const dupFile = createDuplicateSourceFile(fileFromPackageId, fileName, path);
+                filesByName.set(path, dupFile);
+                files.push(dupFile);
+                return dupFile;
+            }
 
             // We haven't looked for this file, do so now and cache result
-            file = host.getSourceFile(fileName, options.target, hostErrorMessage => {
+            const file = host.getSourceFile(fileName, options.target, hostErrorMessage => {
                 if (refFile !== undefined && refPos !== undefined && refEnd !== undefined) {
                     fileProcessingDiagnostics.add(createFileDiagnostic(refFile, refPos, refEnd - refPos,
                         Diagnostics.Cannot_read_file_0_Colon_1, fileName, hostErrorMessage));
