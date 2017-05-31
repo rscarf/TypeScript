@@ -3851,11 +3851,18 @@ namespace ts {
          * This is optional for backwards-compatibility, but will be added if not provided.
          */
         extension: Extension;
-        //TODO: make optional for back-compat
-        packageId: PackageId;
+        packageId?: PackageId;
     }
-    export interface PackageId { //doc
-        name: string; // May not contain '@'
+
+    /** Unique identifier with a package name and version. */
+    export interface PackageId {
+        /**
+         * Name of the package.
+         * Should not include `@types`.
+         * If accessing a non-index file, this should include its name e.g. "foo/bar".
+         */
+        name: string;
+        /** Version of the package, e.g. "1.2.3" */
         version: string;
     }
 
