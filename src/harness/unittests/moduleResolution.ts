@@ -19,8 +19,9 @@ namespace ts {
         assert.deepEqual(actual.failedLookupLocations, expectedFailedLookupLocations);
     }
 
+    //todo: tests with packageId
     export function createResolvedModule(resolvedFileName: string, isExternalLibraryImport = false): ResolvedModuleFull {
-        return { resolvedFileName, extension: extensionFromPath(resolvedFileName), isExternalLibraryImport };
+        return { resolvedFileName, extension: extensionFromPath(resolvedFileName), isExternalLibraryImport, packageId: undefined };
     }
 
     interface File {

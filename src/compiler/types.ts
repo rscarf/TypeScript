@@ -3849,6 +3849,12 @@ namespace ts {
          * This is optional for backwards-compatibility, but will be added if not provided.
          */
         extension: Extension;
+        //TODO: make optional for back-compat
+        packageId: PackageId;
+    }
+    export interface PackageId { //doc
+        name: string; // May not contain '@'
+        version: string;
     }
 
     export enum Extension {

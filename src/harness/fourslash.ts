@@ -558,6 +558,7 @@ namespace FourSlash {
 
         public verifyNoErrors() {
             ts.forEachKey(this.inputFiles, fileName => {
+                if (ts.fileExtensionIs(fileName, ".json")) return;
                 const errors = this.getDiagnostics(fileName);
                 if (errors.length) {
                     this.printErrorLog(/*expectErrors*/ false, errors);
