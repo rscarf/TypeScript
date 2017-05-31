@@ -10,10 +10,7 @@ export default class X {
 }
 
 // @Filename: /node_modules/a/node_modules/x/package.json
-{
-    "name": "x",
-    "version": "1.2.3"
-}
+{ "name": "x", "version": "1.2.3" }
 
 // @Filename: /node_modules/b/index.d.ts
 import X from "x";
