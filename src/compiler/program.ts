@@ -1532,6 +1532,7 @@ namespace ts {
             const c: SourceFile = Object.create(sf);
             c.fileName = fileName;
             c.path = path;
+            c.isRedirect = true;
             return c;
         }
 

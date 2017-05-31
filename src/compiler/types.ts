@@ -2282,6 +2282,8 @@ namespace ts {
         /* @internal */ path: Path;
         text: string;
 
+        /* @internal */ isRedirect?: boolean; //doc
+
         amdDependencies: AmdDependency[];
         moduleName: string;
         referencedFiles: FileReference[];

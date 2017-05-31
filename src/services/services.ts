@@ -1225,6 +1225,10 @@ namespace ts {
                     // Check if the old program had this file already
                     const oldSourceFile = program && program.getSourceFileByPath(path);
                     if (oldSourceFile) {
+                        if (oldSourceFile.isRedirect) {
+                            return oldSourceFile; //I guess???
+                        }
+
                         // We already had a source file for this file name.  Go to the registry to
                         // ensure that we get the right up to date version of it.  We need this to
                         // address the following race-condition.  Specifically, say we have the following:
@@ -1236,21 +1240,21 @@ namespace ts {
                         //      LS2
                         //
                         // Each LS has a reference to file 'foo.ts' at version 1.  LS2 then updates
-                        // it's version of 'foo.ts' to version 2.  This will cause LS2 and the
-                        // DocumentRegistry to have version 2 of the document.  HOwever, LS1 will
+                        // its version of 'foo.ts' to version 2.  This will cause LS2 and the
+                        // DocumentRegistry to have version 2 of the document.  However, LS1 will
                         // have version 1.  And *importantly* this source file will be *corrupt*.
                         // The act of creating version 2 of the file irrevocably damages the version
                         // 1 file.
                         //
                         // So, later when we call into LS1, we need to make sure that it doesn't use
-                        // it's source file any more, and instead defers to DocumentRegistry to get
+                        // its source file any more, and instead defers to DocumentRegistry to get
                         // either version 1, version 2 (or some other version) depending on what the
                         // host says should be used.
 
                         // We do not support the scenario where a host can modify a registered
                         // file's script kind, i.e. in one project some file is treated as ".ts"
                         // and in another as ".js"
-                        Debug.assert(hostFileInformation.scriptKind === oldSourceFile.scriptKind, "Registered script kind (" + oldSourceFile.scriptKind + ") should match new script kind (" + hostFileInformation.scriptKind + ") for file: " + path);
+                        Debug.assert(hostFileInformation.scriptKind === oldSourceFile.scriptKind, `Registered script kind (${oldSourceFile.scriptKind}) should match new script kind (${hostFileInformation.scriptKind}) for file: ${path}`);
 
                         return documentRegistry.updateDocumentWithKey(fileName, path, newSettings, documentRegistryBucketKey, hostFileInformation.scriptSnapshot, hostFileInformation.version, hostFileInformation.scriptKind);
                     }

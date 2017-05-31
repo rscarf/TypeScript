@@ -145,7 +145,7 @@ namespace ts {
 
     export function createFileMap<T>(keyMapper?: (key: string) => string): FileMap<T> {
         const files = createMap<T>();
-        return {
+        const fm = {
             get,
             set,
             contains,
@@ -154,6 +154,8 @@ namespace ts {
             getKeys,
             clear,
         };
+        (fm as any).files = files; //for debugging
+        return fm;
 
         function forEachValueInMap(f: (key: Path, value: T) => void) {
             files.forEach((file, key) => {
