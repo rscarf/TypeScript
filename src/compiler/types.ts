@@ -2282,7 +2282,7 @@ namespace ts {
         /* @internal */ path: Path;
         text: string;
 
-        /* @internal */ isRedirect?: boolean; //doc
+        /* @internal */ redirect?: SourceFile | undefined; //doc
 
         amdDependencies: AmdDependency[];
         moduleName: string;

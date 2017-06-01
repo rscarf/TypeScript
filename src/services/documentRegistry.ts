@@ -73,6 +73,18 @@ namespace ts {
             version: string,
             scriptKind?: ScriptKind): SourceFile;
 
+        acquireOrUpdateDocumentWithKey(
+            fileName: string,
+            path: Path,
+            compilationSettings: CompilerOptions,
+            key: DocumentRegistryBucketKey,
+            scriptSnapshot: IScriptSnapshot,
+            version: string,
+            scriptKind: ScriptKind,
+            acquiring: boolean | undefined): SourceFile;
+
+        somethingSomethingRedirect(key: DocumentRegistryBucketKey, path: Path, r: SourceFile): SourceFile;
+
         getKeyForCompilationSettings(settings: CompilerOptions): DocumentRegistryBucketKey;
         /**
          * Informs the DocumentRegistry that a file is not needed any longer.
@@ -147,7 +159,7 @@ namespace ts {
         }
 
         function acquireDocumentWithKey(fileName: string, path: Path, compilationSettings: CompilerOptions, key: DocumentRegistryBucketKey, scriptSnapshot: IScriptSnapshot, version: string, scriptKind?: ScriptKind): SourceFile {
-            return acquireOrUpdateDocument(fileName, path, compilationSettings, key, scriptSnapshot, version, /*acquiring*/ true, scriptKind);
+            return acquireOrUpdateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version, scriptKind, /*acquiring*/ true);
         }
 
         function updateDocument(fileName: string, compilationSettings: CompilerOptions, scriptSnapshot: IScriptSnapshot, version: string, scriptKind?: ScriptKind): SourceFile {
@@ -157,23 +169,51 @@ namespace ts {
         }
 
         function updateDocumentWithKey(fileName: string, path: Path, compilationSettings: CompilerOptions, key: DocumentRegistryBucketKey, scriptSnapshot: IScriptSnapshot, version: string, scriptKind?: ScriptKind): SourceFile {
-            return acquireOrUpdateDocument(fileName, path, compilationSettings, key, scriptSnapshot, version, /*acquiring*/ false, scriptKind);
+            return acquireOrUpdateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version, scriptKind,  /*acquiring*/ false);
         }
 
-        function acquireOrUpdateDocument(
+        //killme
+        function somethingSomethingRedirect(key: DocumentRegistryBucketKey, path: Path, r: SourceFile): SourceFile {
+            //const original = r.redirect;
+
+
+            const bucket = getBucketForCompilationSettings(key, /*createIfMissing*/ true);
+            let entry = bucket.get(path);
+
+
+            if (!entry) {
+                //Content on disk maybe changed?
+
+
+                // OK, it's a redirect after all.
+                return r;
+            }
+
+            if (entry.sourceFile.text === r.text) {
+                //Another project has this file as a non-redirect, but ignore.
+                return r;
+            }
+
+            //This counts as acquiring it.
+            entry.languageServiceRefCount++;
+            return entry.sourceFile;
+        }
+
+        function acquireOrUpdateDocumentWithKey(
             fileName: string,
             path: Path,
             compilationSettings: CompilerOptions,
             key: DocumentRegistryBucketKey,
             scriptSnapshot: IScriptSnapshot,
             version: string,
-            acquiring: boolean,
-            scriptKind?: ScriptKind): SourceFile {
+            scriptKind: ScriptKind,
+            // true = must acquire. false = must update. undefined = whatever.
+            acquiring: boolean | undefined): SourceFile {
 
             const bucket = getBucketForCompilationSettings(key, /*createIfMissing*/ true);
             let entry = bucket.get(path);
             if (!entry) {
-                Debug.assert(acquiring, "How could we be trying to update a document that the registry doesn't have?");
+                Debug.assert(acquiring !== false, "How could we be trying to update a document that the registry doesn't have?");
 
                 // Have never seen this file with these settings.  Create a new source file for it.
                 const sourceFile = createLanguageServiceSourceFile(fileName, scriptSnapshot, compilationSettings.target, version, /*setNodeParents*/ false, scriptKind);
@@ -231,10 +271,12 @@ namespace ts {
             acquireDocumentWithKey,
             updateDocument,
             updateDocumentWithKey,
+            acquireOrUpdateDocumentWithKey,
             releaseDocument,
             releaseDocumentWithKey,
             reportStats,
-            getKeyForCompilationSettings
+            getKeyForCompilationSettings,
+            somethingSomethingRedirect,
         };
     }
 }

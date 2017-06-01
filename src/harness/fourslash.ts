@@ -451,7 +451,7 @@ namespace FourSlash {
             this.languageServiceAdapterHost.openFile(fileToOpen.fileName, content, scriptKindName);
         }
 
-        public verifyErrorExistsBetweenMarkers(startMarkerName: string, endMarkerName: string, negative: boolean) {
+        public verifyErrorExistsBetweenMarkers(startMarkerName: string, endMarkerName: string, shouldExist: boolean) {
             const startMarker = this.getMarkerByName(startMarkerName);
             const endMarker = this.getMarkerByName(endMarkerName);
             const predicate = (errorMinChar: number, errorLimChar: number, startPos: number, endPos: number) =>
@@ -459,9 +459,9 @@ namespace FourSlash {
 
             const exists = this.anyErrorInRange(predicate, startMarker, endMarker);
 
-            if (exists !== negative) {
-                this.printErrorLog(negative, this.getAllDiagnostics());
-                throw new Error(`Failure between markers: '${startMarkerName}', '${endMarkerName}'`);
+            if (exists !== shouldExist) {
+                this.printErrorLog(shouldExist, this.getAllDiagnostics());
+                throw new Error(`${shouldExist ? "Expected" : "Did not expect"} failure between markers: '${startMarkerName}', '${endMarkerName}'`);
             }
         }
 
@@ -493,13 +493,15 @@ namespace FourSlash {
             const diagnostics: ts.Diagnostic[] = [];
 
             for (const fileName of this.languageServiceAdapterHost.getFilenames()) {
-                diagnostics.push.apply(this.getDiagnostics(fileName));
+                if (ts.tryGetExtensionFromPath(fileName) !== undefined) {
+                    diagnostics.push(...this.getDiagnostics(fileName));
+                }
             }
 
             return diagnostics;
         }
 
-        public verifyErrorExistsAfterMarker(markerName: string, negative: boolean, after: boolean) {
+        public verifyErrorExistsAfterMarker(markerName: string, shouldExist: boolean, after: boolean) {
             const marker: Marker = this.getMarkerByName(markerName);
             let predicate: (errorMinChar: number, errorLimChar: number, startPos: number, endPos: number) => boolean;
 
@@ -515,30 +517,15 @@ namespace FourSlash {
             const exists = this.anyErrorInRange(predicate, marker);
             const diagnostics = this.getAllDiagnostics();
 
-            if (exists !== negative) {
-                this.printErrorLog(negative, diagnostics);
-                throw new Error("Failure at marker: " + markerName);
+            if (exists !== shouldExist) {
+                this.printErrorLog(shouldExist, diagnostics);
+                throw new Error(`${shouldExist ? "Expected" : "Did not expect"} failure at marker '${markerName}'`);
             }
         }
 
-        private anyErrorInRange(predicate: (errorMinChar: number, errorLimChar: number, startPos: number, endPos: number) => boolean, startMarker: Marker, endMarker?: Marker) {
-
-            const errors = this.getDiagnostics(startMarker.fileName);
-            let exists = false;
-
-            const startPos = startMarker.position;
-            let endPos: number = undefined;
-            if (endMarker !== undefined) {
-                endPos = endMarker.position;
-            }
-
-            errors.forEach(function (error: ts.Diagnostic) {
-                if (predicate(error.start, error.start + error.length, startPos, endPos)) {
-                    exists = true;
-                }
-            });
-
-            return exists;
+        private anyErrorInRange(predicate: (errorMinChar: number, errorLimChar: number, startPos: number, endPos: number) => boolean, startMarker: Marker, endMarker?: Marker): boolean {
+            return this.getDiagnostics(startMarker.fileName).some(({ start, length }) =>
+                predicate(start, start + length, startMarker.position, endMarker === undefined ? undefined : endMarker.position));
         }
 
         private printErrorLog(expectErrors: boolean, errors: ts.Diagnostic[]) {

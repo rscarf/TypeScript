@@ -478,8 +478,8 @@ namespace ts {
         // used to track cases when two file names differ only in casing
         const filesByNameIgnoreCase = host.useCaseSensitiveFileNames() ? createFileMap<SourceFile>(fileName => fileName.toLowerCase()) : undefined;
 
-        const structuralIsReused = tryReuseStructureFromOldProgram();
-        if (structuralIsReused !== StructureIsReused.Completely) {
+        const structureIsReused = tryReuseStructureFromOldProgram();
+        if (structureIsReused !== StructureIsReused.Completely) {
             forEach(rootNames, name => processRootFile(name, /*isDefaultLib*/ false));
 
             // load type declarations specified via 'types' argument or implicitly from types/ and node_modules/@types folders
@@ -596,7 +596,7 @@ namespace ts {
         }
 
         function resolveModuleNamesReusingOldState(moduleNames: string[], containingFile: string, file: SourceFile, oldProgramState: OldProgramState) {
-            if (structuralIsReused === StructureIsReused.Not && !file.ambientModuleNames.length) {
+            if (structureIsReused === StructureIsReused.Not && !file.ambientModuleNames.length) {
                 // If the old program state does not permit reusing resolutions and `file` does not contain locally defined ambient modules,
                 // the best we can do is fallback to the default logic.
                 return resolveModuleNamesWorker(moduleNames, containingFile);
@@ -647,10 +647,18 @@ namespace ts {
                 if (file === oldSourceFile) {
                     const oldResolvedModule = oldSourceFile && oldSourceFile.resolvedModules.get(moduleName);
                     if (oldResolvedModule) {
-                        if (isTraceEnabled(options, host)) {
-                            trace(host, Diagnostics.Reusing_resolution_of_module_0_to_file_1_from_old_program, moduleName, containingFile);
+                        debugger; //TODO: check that this is working
+                        //If oldResolvedModule had a packageId and its file has been modified, must redo resolution as packageId will probably change
+                        if (oldResolvedModule.packageId && ts.contains(oldProgramState.modifiedFilePaths, oldResolvedModule.resolvedFileName)) {
+                            //neater
+                            (unknownModuleNames || (unknownModuleNames = [])).push(moduleName);
                         }
-                        (result || (result = new Array(moduleNames.length)))[i] = oldResolvedModule;
+                        else {
+                            if (isTraceEnabled(options, host)) {
+                                trace(host, Diagnostics.Reusing_resolution_of_module_0_to_file_1_from_old_program, moduleName, containingFile);
+                            }
+                            (result || (result = new Array(moduleNames.length)))[i] = oldResolvedModule;
+                        }
                         continue;
                     }
                 }
@@ -1527,7 +1535,11 @@ namespace ts {
             const c: SourceFile = Object.create(sf);
             c.fileName = fileName;
             c.path = path;
-            c.isRedirect = true;
+            c.redirect = sf;
+            Object.defineProperties(c, {
+                id: { get(this: SourceFile) { return this.redirect.id }, set(this: SourceFile, value) { this.redirect.id = value } },
+                symbol: { get(this: SourceFile) { return this.redirect.symbol }, set(this: SourceFile, value) { this.redirect.symbol = value } },
+            });
             return c;
         }
 

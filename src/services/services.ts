@@ -1218,52 +1218,57 @@ namespace ts {
                     return undefined;
                 }
 
+                const oldSourceFile = program && program.getSourceFileByPath(path);
+                if (!(oldSourceFile && oldSourceFile.redirect)) {
+                    return foo(hostFileInformation, oldSourceFile, false, fileName, path);
+                }
+
+                //fileName = oldSourceFile.redirect.fileName;
+                //path = oldSourceFile.redirect.path;
+                //This goes and gets the *real* file, but if the text is the same we will continue being a redirect.
+                //Note that we don't know whether we'll be acquring/updating the real file, so allow either.
+                const redirectFileInformation = hostCache.getOrCreateEntryByPath(fileName, path);
+                Debug.assert(!!redirectFileInformation);
+                const sf = foo(redirectFileInformation, undefined, true, fileName, path);
+                //If text is different, break redirect
+                return sf.text === oldSourceFile.text ? oldSourceFile : sf;
+            }
+
+            function foo(fileInfo: HostFileInformation, oldSourceFile: SourceFile | undefined, acquireOrUpdateOk: boolean, fileName: string, path: Path): SourceFile { //TODO: just return sf
                 // Check if the language version has changed since we last created a program; if they are the same,
                 // it is safe to reuse the sourceFiles; if not, then the shape of the AST can change, and the oldSourceFile
                 // can not be reused. we have to dump all syntax trees and create new ones.
-                if (!shouldCreateNewSourceFiles) {
-                    // Check if the old program had this file already
-                    const oldSourceFile = program && program.getSourceFileByPath(path);
-                    if (oldSourceFile) {
-                        if (oldSourceFile.isRedirect) {
-                            return oldSourceFile;
-                        }
+                if (!shouldCreateNewSourceFiles && oldSourceFile) {
+                    // We already had a source file for this file name.  Go to the registry to
+                    // ensure that we get the right up to date version of it.  We need this to
+                    // address the following race-condition.  Specifically, say we have the following:
+                    //
+                    //      LS1
+                    //          \
+                    //           DocumentRegistry
+                    //          /
+                    //      LS2
+                    //
+                    // Each LS has a reference to file 'foo.ts' at version 1.  LS2 then updates
+                    // its version of 'foo.ts' to version 2.  This will cause LS2 and the
+                    // DocumentRegistry to have version 2 of the document.  However, LS1 will
+                    // have version 1.  And *importantly* this source file will be *corrupt*.
+                    // The act of creating version 2 of the file irrevocably damages the version
+                    // 1 file.
+                    //
+                    // So, later when we call into LS1, we need to make sure that it doesn't use
+                    // its source file any more, and instead defers to DocumentRegistry to get
+                    // either version 1, version 2 (or some other version) depending on what the
+                    // host says should be used.
 
-                        // We already had a source file for this file name.  Go to the registry to
-                        // ensure that we get the right up to date version of it.  We need this to
-                        // address the following race-condition.  Specifically, say we have the following:
-                        //
-                        //      LS1
-                        //          \
-                        //           DocumentRegistry
-                        //          /
-                        //      LS2
-                        //
-                        // Each LS has a reference to file 'foo.ts' at version 1.  LS2 then updates
-                        // its version of 'foo.ts' to version 2.  This will cause LS2 and the
-                        // DocumentRegistry to have version 2 of the document.  However, LS1 will
-                        // have version 1.  And *importantly* this source file will be *corrupt*.
-                        // The act of creating version 2 of the file irrevocably damages the version
-                        // 1 file.
-                        //
-                        // So, later when we call into LS1, we need to make sure that it doesn't use
-                        // its source file any more, and instead defers to DocumentRegistry to get
-                        // either version 1, version 2 (or some other version) depending on what the
-                        // host says should be used.
-
-                        // We do not support the scenario where a host can modify a registered
-                        // file's script kind, i.e. in one project some file is treated as ".ts"
-                        // and in another as ".js"
-                        Debug.assert(hostFileInformation.scriptKind === oldSourceFile.scriptKind, `Registered script kind (${oldSourceFile.scriptKind}) should match new script kind (${hostFileInformation.scriptKind}) for file: ${path}`);
-
-                        return documentRegistry.updateDocumentWithKey(fileName, path, newSettings, documentRegistryBucketKey, hostFileInformation.scriptSnapshot, hostFileInformation.version, hostFileInformation.scriptKind);
-                    }
-
-                    // We didn't already have the file.  Fall through and acquire it from the registry.
+                    // We do not support the scenario where a host can modify a registered
+                    // file's script kind, i.e. in one project some file is treated as ".ts"
+                    // and in another as ".js"
+                    Debug.assert(fileInfo.scriptKind === oldSourceFile.scriptKind, `Registered script kind (${oldSourceFile.scriptKind}) should match new script kind (${fileInfo.scriptKind}) for file: ${path}`);
                 }
 
-                // Could not find this file in the old program, create a new SourceFile for it.
-                return documentRegistry.acquireDocumentWithKey(fileName, path, newSettings, documentRegistryBucketKey, hostFileInformation.scriptSnapshot, hostFileInformation.version, hostFileInformation.scriptKind);
+                const acquiring = acquireOrUpdateOk ? undefined : !oldSourceFile;
+                return documentRegistry.acquireOrUpdateDocumentWithKey(fileName, path, newSettings, documentRegistryBucketKey, fileInfo.scriptSnapshot, fileInfo.version, fileInfo.scriptKind, acquiring);
             }
 
             function sourceFileUpToDate(sourceFile: SourceFile): boolean {
