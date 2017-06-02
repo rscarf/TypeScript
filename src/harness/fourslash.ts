@@ -493,7 +493,7 @@ namespace FourSlash {
             const diagnostics: ts.Diagnostic[] = [];
 
             for (const fileName of this.languageServiceAdapterHost.getFilenames()) {
-                if (ts.tryGetExtensionFromPath(fileName) !== undefined) {
+                if (ts.isAnySupportedFileExtension(fileName)) {
                     diagnostics.push(...this.getDiagnostics(fileName));
                 }
             }
@@ -545,7 +545,7 @@ namespace FourSlash {
 
         public verifyNoErrors() {
             ts.forEachKey(this.inputFiles, fileName => {
-                if (ts.fileExtensionIs(fileName, ".json")) return;
+                if (!ts.isAnySupportedFileExtension(fileName)) return;
                 const errors = this.getDiagnostics(fileName);
                 if (errors.length) {
                     this.printErrorLog(/*expectErrors*/ false, errors);

@@ -194,9 +194,8 @@ namespace Harness.LanguageService {
         getCurrentDirectory(): string { return virtualFileSystemRoot; }
         getDefaultLibFileName(): string { return Harness.Compiler.defaultLibFileName; }
         getScriptFileNames(): string[] {
-            //Should return only the *script* file names!!!
             return this.getFilenames().filter(f =>
-                ts.tryGetExtensionFromPath(f) !== undefined);
+                ts.isAnySupportedFileExtension(f) !== undefined);
         }
         getScriptSnapshot(fileName: string): ts.IScriptSnapshot {
             const script = this.getScriptInfo(fileName);

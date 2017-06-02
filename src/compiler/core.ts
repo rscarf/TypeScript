@@ -2424,6 +2424,11 @@ namespace ts {
         }
         Debug.fail(`File ${path} has unknown extension.`);
     }
+
+    export function isAnySupportedFileExtension(path: string): boolean {
+        return tryGetExtensionFromPath(path) !== undefined;
+    }
+
     export function tryGetExtensionFromPath(path: string): Extension | undefined {
         if (fileExtensionIs(path, ".d.ts")) {
             return Extension.Dts;

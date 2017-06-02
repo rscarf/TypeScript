@@ -20,7 +20,7 @@ namespace ts {
     }
 
     export function createResolvedModule(resolvedFileName: string, isExternalLibraryImport = false): ResolvedModuleFull {
-        return { resolvedFileName, extension: extensionFromPath(resolvedFileName), isExternalLibraryImport, packageId: undefined };
+        return { resolvedFileName, extension: extensionFromPath(resolvedFileName), isExternalLibraryImport };
     }
 
     interface File {

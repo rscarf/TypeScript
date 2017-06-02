@@ -83,8 +83,6 @@ namespace ts {
             scriptKind: ScriptKind,
             acquiring: boolean | undefined): SourceFile;
 
-        somethingSomethingRedirect(key: DocumentRegistryBucketKey, path: Path, r: SourceFile): SourceFile;
-
         getKeyForCompilationSettings(settings: CompilerOptions): DocumentRegistryBucketKey;
         /**
          * Informs the DocumentRegistry that a file is not needed any longer.
@@ -172,33 +170,6 @@ namespace ts {
             return acquireOrUpdateDocumentWithKey(fileName, path, compilationSettings, key, scriptSnapshot, version, scriptKind,  /*acquiring*/ false);
         }
 
-        //killme
-        function somethingSomethingRedirect(key: DocumentRegistryBucketKey, path: Path, r: SourceFile): SourceFile {
-            //const original = r.redirect;
-
-
-            const bucket = getBucketForCompilationSettings(key, /*createIfMissing*/ true);
-            let entry = bucket.get(path);
-
-
-            if (!entry) {
-                //Content on disk maybe changed?
-
-
-                // OK, it's a redirect after all.
-                return r;
-            }
-
-            if (entry.sourceFile.text === r.text) {
-                //Another project has this file as a non-redirect, but ignore.
-                return r;
-            }
-
-            //This counts as acquiring it.
-            entry.languageServiceRefCount++;
-            return entry.sourceFile;
-        }
-
         function acquireOrUpdateDocumentWithKey(
             fileName: string,
             path: Path,
@@ -276,7 +247,6 @@ namespace ts {
             releaseDocumentWithKey,
             reportStats,
             getKeyForCompilationSettings,
-            somethingSomethingRedirect,
         };
     }
 }

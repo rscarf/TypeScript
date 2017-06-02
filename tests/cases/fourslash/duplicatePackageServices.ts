@@ -42,7 +42,6 @@ verify.referenceGroups([r0, r1], [aImport, def, bImport]);
 verify.referenceGroups([r2], [def, aImport, bImport]);
 verify.referenceGroups([r3, r4], [bImport, def, aImport]);
 
-// Findallrefs won't work in b...
 verify.referenceGroups(r5, [def, aImport, bImport]);
 
 // Edit 'b', and we should now get duplicate-definition errors...
@@ -53,3 +52,7 @@ goTo.marker("defBX");
 edit.insert(" "); // Dummy change
 
 verify.errorExistsAfterMarker("error");
+
+edit.backspace();
+
+verify.numberOfErrorsInCurrentFile(0);
